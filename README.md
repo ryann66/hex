@@ -16,7 +16,7 @@ Program returns the number of numbers converted upon completion
 -q Forces the program to read input as a hexadecimal  
 -f Lets the program decide how to read input based off prefix (default)  
 -b Writes output in binary with prefix  
--B Writes output in binray, broken into blocks of 8  
+-B Writes output in binary, broken into blocks of 8  
 -d Writes output in base 10 (decimal)  
 -o Writes output in octal with prefix  
 -h Writes output in hexadecimal with prefix  
