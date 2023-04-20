@@ -49,7 +49,7 @@ void print_help(){
     printf("-q Forces the program to read input as a hexadecimal\n");
     printf("-f Lets the program decide how to read input based off prefix (default)\n");
     printf("-b Writes output in binary with prefix\n");
-    printf("-B Writes output in binray, broken into blocks of 8\n");
+    printf("-B Writes output in binary, broken into blocks of 8\n");
     printf("-d Writes output in base 10 (decimal)\n");
     printf("-o Writes output in octal with prefix\n");
     printf("-h Writes output in hexadecimal with prefix\n");

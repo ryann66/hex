@@ -4,7 +4,7 @@ Command line converter for Linux
 Usage:
 hex \<options\> \<params\>  
 Params are the numbers to be converted.  Use prefixes or options to interpret non-decimal numbers.  
-If no params are passed then program will read from stdin (send an empty line to stop reading)  
+If no params are passed then program will read from stdin (send an empty line or type q to stop reading)  
 Program returns the number of numbers converted upon completion  
 
   
@@ -21,7 +21,10 @@ Program returns the number of numbers converted upon completion
 -o Writes output in octal with prefix  
 -h Writes output in hexadecimal with prefix  
 -t Puts the system into signed mode (two's complement).  
-       Use '_' for '-' when writing decimals to avoid confusion with flags  
+       Be aware that lead bit will determine sign:
+	  0x8 will evaluate as negative
+	  0x18 will evaluate as positive
+       Use '_' for '-' when writing decimals to avoid confusion with flags when entering decimal 
 -w**N** Sets the width of output to be **N** bytes long.  **N** must be 1-8 (inclusive).  
        Not intended for use with octal or decimal  
 -z Suppresses warning messages  
