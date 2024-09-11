@@ -129,7 +129,13 @@ fn main() {
 	loop {
 		let mut line = String::new();
 		match io::stdin().read_line(&mut line) {
+			Ok(0) => {
+				// eof
+				exit(0);
+			}
 			Ok(_) => {
+				// presumed number
+				let _ = line.split_off(line.len() - 2);
 				match convert(line, &read_mode, &write_mode, &write_length, signed_mode) {
 					Ok(str) => {
 						println!("{}", str);
@@ -141,7 +147,8 @@ fn main() {
 				};
 			}
 			Err(_) => {
-				exit(0);
+				// some read error
+				exit(1);
 			}
 		}
 	}
