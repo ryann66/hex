@@ -1,6 +1,7 @@
 use std::{process::exit, vec::Vec, io};
 
 use queues::{CircularBuffer, IsQueue};
+use bitvec::prelude::BitVec;
 
 enum ReadMode {
 	Binary,
@@ -22,6 +23,9 @@ enum WriteLength {
 	Fixed(u64)
 }
 
+/**
+   Prints the program help
+ */
 fn print_help() {
 	println!("HEX");
     println!("Tool for converting between different number types");
@@ -48,10 +52,37 @@ fn print_help() {
 }
 
 /**
+   Attempts to parse the string arg into an integer
+   The result integer is returned as a big endian integer (signedness indicated by signed_mode)
+   On failure, returns an Err with an error message
+ */
+#[inline]
+fn read(arg: &String, read_mode: &ReadMode, signed_mode: bool) -> Result<BitVec, String> {
+	Ok(BitVec::new())
+}
+
+/**
+   Converts the stream of bits representing a big-endian integer (signedness indicated by signed_mode) into
+   a string version of the integer in the format given by write_mode
+ */
+#[inline]
+fn write(bits: &BitVec, write_mode: &WriteMode, write_length: &WriteLength, signed_mode: bool) -> String {
+	String::new()
+}
+
+/**
    Converts the given argument into the specified format and returns either the converted string or an error message
  */
+#[inline]
 fn convert(ref arg: String, read_mode: &ReadMode, write_mode: &WriteMode, write_length: &WriteLength, signed_mode: bool) -> Result<String, String> {
-	Ok(arg.to_string())
+	match read(arg, read_mode, signed_mode) {
+		Ok(bits) => {
+			Ok(write(&bits, write_mode, write_length, signed_mode))
+		}
+		Err(msg) => {
+			Err(msg)
+		}
+	}
 }
 
 /**
