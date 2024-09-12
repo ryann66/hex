@@ -23,7 +23,28 @@ enum WriteLength {
 }
 
 fn print_help() {
-	println!("help me");
+	println!("HEX");
+    println!("Tool for converting between different number types");
+    println!("Usage: hex <options> <params>");
+    println!("Can take many params at once or leave empty to read from stdin");
+    println!("");
+    println!("Options:");
+    println!("-h Displays this help and exits");
+    println!("-v Displays the program version and exits");
+    println!("-B Forces the program to read input as a a binary");
+    println!("-D Forces the program to read input as a base 10 (decimal) integer");
+    println!("-O Forces the program to read input as an octal");
+    println!("-X Forces the program to read input as a hexadecimal");
+    println!("-F Lets the program decide how to read input based off prefix (default)");
+    println!("-b Writes output in binary with prefix");
+    println!("-d Writes output in base 10 (decimal)");
+    println!("-o Writes output in octal with prefix");
+    println!("-x Writes output in hexadecimal with prefix");
+    println!("-s Puts the system into signed mode (two's complement).  Use '_' for '-' in decimals");
+    println!("-u Puts the system into unsigned mode (default)");
+    println!("-w=<Num> Sets the width of output");
+	println!("	With decimal and octal the length is in characters (excluding - sign)");
+	println!("	With binary and hexadecimal the length is in bytes");
 }
 
 /**
@@ -90,7 +111,7 @@ fn main() {
 			}
 			['-', 'h'] | ['-', 'H'] | ['-', '?'] => {
 				print_help();
-				exit(if args.size() > 0 { 1 } else { 0 });
+				exit(0);
 			}
 			['-', 'w', '=', ..] => {
 				// width
@@ -101,6 +122,10 @@ fn main() {
 					println!("Error! unrecognizable option: {}", arg);
 					exit(1);
 				}
+			}
+			['-', 'v'] | ['-', 'V'] => {
+				println!("Hex v{}", env!("CARGO_PKG_VERSION"));
+				exit(0);
 			}
 			_ => {
 				// something else (assume number)
