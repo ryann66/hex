@@ -51,9 +51,15 @@ fn print_help() {
 	println!("	With binary and hexadecimal the length is in bytes");
 }
 
+/*
+   A note on integer representation using bitvec.  All integers are stored 'little-endian'
+   where the the least significant bit gets the lowest address.  Hence,
+   bitvec[0] is the 1s position and bitvec[2] would be the 4s position
+ */
+
 /**
    Attempts to parse the string arg into an integer
-   The result integer is returned as a big endian integer (signedness indicated by signed_mode)
+   The result integer is returned as a little-endian integer (signedness indicated by signed_mode)
    On failure, returns an Err with an error message
  */
 #[inline]
@@ -62,7 +68,7 @@ fn read(arg: &String, read_mode: &ReadMode, signed_mode: bool) -> Result<BitVec,
 }
 
 /**
-   Converts the stream of bits representing a big-endian integer (signedness indicated by signed_mode) into
+   Converts the stream of bits representing a little-endian integer (signedness indicated by signed_mode) into
    a string version of the integer in the format given by write_mode
  */
 #[inline]
