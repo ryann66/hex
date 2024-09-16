@@ -1,7 +1,7 @@
-use std::{process::exit, vec::Vec, io};
+use std::{io, ops::BitXor, process::exit, vec::Vec};
 
 use queues::{CircularBuffer, IsQueue};
-use bitvec::prelude::BitVec;
+use bitvec::{bitvec, prelude::BitVec};
 
 #[derive(PartialEq, Eq)]
 #[derive(Clone, Copy)]
@@ -363,6 +363,17 @@ fn read(arg: &String, mut read_mode: ReadMode, signed_mode: bool) -> Result<BitV
 					c => return Err(format!("Character {} not allowed in decimal numbers", c))
 				};
 				add_bits_to(&mut bits, &addend);
+			};
+
+			//flip bits if negative
+			if negative_arg && signed_mode {
+				for b in bits.iter_mut() {
+					let tb = b.bitxor(true);
+					b.commit(tb);
+				}
+				let mut one_bit = BitVec::new();
+				one_bit.push(true);
+				add_bits_to(&mut bits, &one_bit);
 			}
 		}
 		ReadMode::Interpret => assert!(false)
