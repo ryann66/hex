@@ -1,7 +1,7 @@
-use std::{collections::btree_map::Range, io, ops::BitXor, process::exit, vec::Vec};
+use std::{io, process::exit, vec::Vec};
 
 use queues::{CircularBuffer, IsQueue};
-use bitvec::{bitvec, prelude::BitVec};
+use bitvec::prelude::BitVec;
 
 #[derive(PartialEq, Eq)]
 #[derive(Clone, Copy)]
@@ -60,6 +60,13 @@ fn print_help() {
    where the the least significant bit gets the lowest address.  Hence,
    bitvec[0] is the 1s position and bitvec[2] would be the 4s position
  */
+
+/*
+   Negates the integer represented by the bitvec
+*/
+fn negate(mut bits: &BitVec) {
+
+}
 
 /**
    Attempts to parse the string arg into an integer
@@ -311,13 +318,7 @@ fn read(arg: &String, mut read_mode: ReadMode, signed_mode: bool) -> Result<BitV
 
 			//flip bits if negative
 			if negative_arg && signed_mode {
-				for b in bits.iter_mut() {
-					let tb = b.bitxor(true);
-					b.commit(tb);
-				}
-				let mut one_bit = BitVec::new();
-				one_bit.push(true);
-				add_bits_to(&mut bits, &one_bit);
+				negate(&mut bits);
 			}
 		}
 		ReadMode::Interpret => assert!(false)
