@@ -1,4 +1,4 @@
-use std::{io, ops::BitXor, process::exit, vec::Vec};
+use std::{collections::btree_map::Range, io, ops::BitXor, process::exit, vec::Vec};
 
 use queues::{CircularBuffer, IsQueue};
 use bitvec::{bitvec, prelude::BitVec};
@@ -60,20 +60,6 @@ fn print_help() {
    where the the least significant bit gets the lowest address.  Hence,
    bitvec[0] is the 1s position and bitvec[2] would be the 4s position
  */
-
- /**
-    adds the number represented by the addend to the number represented by sum
-  */
-fn add_bits_to(sum:&mut BitVec, addend:&BitVec) {
-	todo!()
-}
-
-/**
-   multiplies the number represented by bits by ten
- */
-fn multiply_by_ten(bits:&mut BitVec) {
-	todo!()
-}
 
 /**
    Attempts to parse the string arg into an integer
@@ -312,58 +298,16 @@ fn read(arg: &String, mut read_mode: ReadMode, signed_mode: bool) -> Result<BitV
 			};
 		}
 		ReadMode::Decimal => {
-			for c in stripped_arg.chars() {
-				multiply_by_ten(&mut bits);
-				let mut addend = BitVec::new();
-				match c {
-					'0' => todo!(),
-					'1' => {
-						addend.push(true);
-					}
-					'2' => {
-						addend.push(false);
-						addend.push(true);
-					}
-					'3' => {
-						addend.push(true);
-						addend.push(true);
-					}
-					'4' => {
-						addend.push(false);
-						addend.push(false);
-						addend.push(true);
-					}
-					'5' => {
-						addend.push(true);
-						addend.push(false);
-						addend.push(true);
-					}
-					'6' => {
-						addend.push(false);
-						addend.push(true);
-						addend.push(true);
-					}
-					'7' => {
-						addend.push(true);
-						addend.push(true);
-						addend.push(true);
-					}
-					'8' => {
-						addend.push(false);
-						addend.push(false);
-						addend.push(false);
-						addend.push(true);
-					}
-					'9' => {
-						addend.push(true);
-						addend.push(false);
-						addend.push(false);
-						addend.push(true);
-					}
-					c => return Err(format!("Character {} not allowed in decimal numbers", c))
-				};
-				add_bits_to(&mut bits, &addend);
-			};
+			// convert argument as a string
+			// process:
+			//	check string num can be divided by 2
+			//		if yes: divide by two, add a divide to the operation stack
+			//		if no: subtract by one, add a subtract to the operation stack
+			//	iterate through operation stack
+			//		if subtract: set the lsb to true (1)
+			//			note: this is the same as adding one because we cannot get two subtracts in a row because
+			//				this would indicate that there exists a number x such that x is odd and x + 1 is odd
+			//		if divide: left shift the whole number by 1, leaving a 0 at the lsb
 
 			//flip bits if negative
 			if negative_arg && signed_mode {
