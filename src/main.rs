@@ -13,6 +13,7 @@ enum ReadMode {
 	Interpret
 }
 
+#[derive(PartialEq, Eq)]
 #[derive(Clone, Copy)]
 enum WriteMode {
 	Binary,
@@ -69,6 +70,8 @@ fn print_help() {
 	println!("	Separator is added every 3 chars for decimal, 2 for hex, 8 for binary, and 2 for octal");
 	println!("	Default separator is ',' for decimal and ' ' for everything else");
 	println!("-t Removes the separator character");
+	println!("-p Write prefixes on all non-decimal numbers (default)");
+	println!("-n Omit prefixes from all numbers");
 }
 
 /*
@@ -515,9 +518,22 @@ fn read(arg: &String, mut read_mode: ReadMode, write_mode: WriteMode, write_leng
 		ReadMode::Interpret => panic!()
 	};
 
+	// trim leading zeroes\
+	while !bits.is_empty() && !bits[0] {
+		bits.remove(0);
+	};
+
 	// increase length of bits to write_length
 	let target_len = match write_length {
-		WriteLength::Unfixed => bits.len() as u64,
+		WriteLength::Unfixed => {
+			let min_len = bits.len() as u64;
+			let int = match write_mode {
+				WriteMode::Hex(_) => 4u64,
+				WriteMode::Octal => 3u64,
+				WriteMode::Binary | WriteMode::Decimal => 1u64
+			};
+			min_len.next_multiple_of(int)
+		}
 		WriteLength::RoundUp => {
 			let min_len = bits.len() as u64;
 			let int = match write_mode {
@@ -549,15 +565,93 @@ fn read(arg: &String, mut read_mode: ReadMode, write_mode: WriteMode, write_leng
    a string version of the integer in the format given by write_mode
  */
 #[inline]
-fn write(bits: &BitVec, write_mode: WriteMode, write_separator: &WriteSeparator, signed_mode: bool) -> String {
-	println!("{}", bits);
-	todo!()
+fn write(mut bits: &mut BitVec, write_mode: WriteMode, write_separator: &WriteSeparator, signed_mode: bool, write_prefix: bool) -> String {
+	let mut ret_str = if write_prefix {
+		match write_mode {
+			WriteMode::Binary => "0b",
+			WriteMode::Octal => "0o",
+			WriteMode::Hex(_) => "0x",
+			WriteMode::Decimal => ""
+		}.to_string()
+	} else {
+		String::new()
+	};
+	if bits.is_empty() {
+		ret_str.push('0');
+		return ret_str;
+	}
+	
+	if let WriteMode::Decimal = write_mode {
+		// do decimal conversion and return
+
+		// handle negatives for decimal
+		if signed_mode && write_mode == WriteMode::Decimal && bits.last().is_some_and(|b| *b) {
+			ret_str.push('-');
+			negative(&mut bits);
+		}
+
+		// actually convert
+		todo!()
+	}
+
+	let mut index_to_char = ['0', '1', '2', '3', '4', '5', '6', '7', '8', '9', 'A', 'B', 'C', 'D', 'E', 'F'];
+	let num_bits = match write_mode {
+		WriteMode::Binary => {
+			ret_str.push_str("0b");
+			1
+		}
+		WriteMode::Octal => 3,
+		WriteMode::Hex(is_upper) => {
+			// fix index_to_char if lowercase
+			if !is_upper {
+				for i in 10..16 {
+					index_to_char[i] = index_to_char[i].to_lowercase().next().unwrap();
+				}
+			}
+			4
+		}
+		WriteMode::Decimal => panic!(),
+	};
+
+	let ideal_chars_in_group = match write_mode {
+		WriteMode::Binary => 8,
+		WriteMode::Octal | WriteMode::Hex(_) => 2,
+		WriteMode::Decimal => panic!()
+	};
+
+	// number of chars already added to the group for emplacing separators
+	let mut chars_in_group = bits.len() /  num_bits % ideal_chars_in_group;
+
+	let mut iter = bits.iter();
+	'outer: loop {
+		let mut index: usize = 0;
+		for _ in 0..num_bits {
+			index <<= 1;
+			if let Some(bit) = iter.next() {
+				index |= *bit as usize;
+			} else {
+				// no more bits
+				break 'outer;
+			}
+		};
+		ret_str.push(index_to_char[index]);
+
+		chars_in_group += 1;
+		if let WriteSeparator::Separator(sep) = write_separator {
+			if chars_in_group == ideal_chars_in_group {
+				ret_str.push_str(sep);
+				chars_in_group = 0;
+			}
+		}
+	};
+
+	return ret_str;
 }
 
 /**
    Converts the given argument into the specified format and returns either the converted string or an error message
  */
-fn convert(ref arg: &String, read_mode: ReadMode, write_mode: WriteMode, write_length: WriteLength, write_separator: &mut WriteSeparator, signed_mode: bool) -> Result<String, String> {
+fn convert(ref arg: &String, read_mode: ReadMode, write_mode: WriteMode, write_length: WriteLength, write_separator: &mut WriteSeparator, signed_mode: bool, write_prefix: bool) -> Result<String, String> {
 	// runtime fix write_separator
 	if let WriteSeparator::RuntimeDetermine = write_separator {
 		*write_separator = WriteSeparator::Separator(match write_mode {
@@ -568,8 +662,8 @@ fn convert(ref arg: &String, read_mode: ReadMode, write_mode: WriteMode, write_l
 	
 	// do conversion
 	match read(arg, read_mode, write_mode, write_length, signed_mode) {
-		Ok(bits) => {
-			Ok(write(&bits, write_mode, &write_separator, signed_mode))
+		Ok(mut bits) => {
+			Ok(write(&mut bits, write_mode, &write_separator, signed_mode, write_prefix))
 		}
 		Err(msg) => {
 			Err(msg)
@@ -593,6 +687,7 @@ fn main() {
 	let mut write_length = WriteLength::Unfixed;
 	let mut write_separator = WriteSeparator::None;
 	let mut signed_mode = false;
+	let mut write_prefix = true;
 
 	// save space for the results of conversions to be stored in
 	let mut results = CircularBuffer::new(std::env::args().len() - 1);
@@ -671,13 +766,21 @@ fn main() {
 			['-', 't'] => {
 				write_separator = WriteSeparator::None;
 			}
+			
+			['-', 'p'] => {
+				write_prefix = true;
+			}
+			
+			['-', 'n'] => {
+				write_prefix = false;
+			}
 			['-', 'v'] | ['-', 'V'] => {
 				println!("Hex v{}", env!("CARGO_PKG_VERSION"));
 				exit(0);
 			}
 			_ => {
 				// something else (assume number)
-				match convert(&arg, read_mode, write_mode, write_length, &mut write_separator, signed_mode) {
+				match convert(&arg, read_mode, write_mode, write_length, &mut write_separator, signed_mode, write_prefix) {
 					Ok(str) => {
 						let _ = results.add(str);
 					}
@@ -709,7 +812,7 @@ fn main() {
 			Ok(_) => {
 				// presumed number
 				let _ = line.split_off(line.len() - 2);
-				match convert(&line, read_mode, write_mode, write_length, &mut write_separator, signed_mode) {
+				match convert(&line, read_mode, write_mode, write_length, &mut write_separator, signed_mode, write_prefix) {
 					Ok(str) => {
 						println!("{}", str);
 					}
