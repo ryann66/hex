@@ -64,7 +64,7 @@ fn print_help() {
 /*
    Negates the integer represented by the bitvec
 */
-fn negate(mut bits: &BitVec) {
+fn negate(bits: &mut BitVec) {
 
 }
 
@@ -316,12 +316,181 @@ fn read(arg: &String, mut read_mode: ReadMode, signed_mode: bool) -> Result<BitV
 			//				this would indicate that there exists a number x such that x is odd and x + 1 is odd
 			//		if divide: left shift the whole number by 1, leaving a 0 at the lsb
 
+			enum Operation {
+				Divide,
+				Subtract
+			}
+
+			/*
+			   returns if the integer that the string would parse into is even
+			 */
+			fn string_is_even(str: &Vec<char>) -> bool {
+				match str.last() {
+					Some('0') | Some('2') | Some('4') | Some('6') | Some('8') => true,
+					_ => false
+				}
+			}
+
+			/*
+			   subtracts one from the integer represented by the string
+			 */
+			fn sub_string(str: &mut Vec<char>) {
+				// subtract off numbers
+				for index in (0..str.len()).rev() {
+					let ch = match str[index] {
+						'9' => '8',
+						'8' => '7',
+						'7' => '6',
+						'6' => '5',
+						'5' => '4',
+						'4' => '3',
+						'3' => '2',
+						'2' => '1',
+						'1' => '0',
+						'0' => '9',
+						_ => panic!()
+					};
+					str[index] = ch;
+					if ch != '9' { break; };
+				};
+
+				// trim leading zeroes
+				while str.get(0) == Some(&'0') {
+					str.remove(0);
+				};
+
+			}
+
+			/*
+			   divides the integer represented by the string by 2
+			 */
+			fn div_string(str: &mut Vec<char>) {
+				// divide numbers starting in the front
+				let mut carry = false;
+				for index in 0..str.len() {
+					str[index] = match str[index] {
+						'9' => {
+							if carry {
+								'9'
+							} else {
+								carry = true;
+								'4'
+							}
+						}
+						'8' => {
+							if carry {
+								carry = false;
+								'9'
+							} else {
+								'4'
+							}
+						}
+						'7' => {
+							if carry {
+								'8'
+							} else {
+								carry = true;
+								'3'
+							}
+						}
+						'6' => {
+							if carry {
+								carry = false;
+								'8'
+							} else {
+								'3'
+							}
+						}
+						'5' => {
+							if carry {
+								'7'
+							} else {
+								carry = true;
+								'2'
+							}
+						}
+						'4' => {
+							if carry {
+								carry = false;
+								'7'
+							} else {
+								'2'
+							}
+						}
+						'3' => {
+							if carry {
+								'6'
+							} else {
+								carry = true;
+								'1'
+							}
+						}
+						'2' => {
+							if carry {
+								carry = false;
+								'6'
+							} else {
+								'1'
+							}
+						}
+						'1' => {
+							if carry {
+								'5'
+							} else {
+								carry = true;
+								'0'
+							}
+						}
+						'0' => {
+							if carry {
+								carry = false;
+								'5'
+							} else {
+								'0'
+							}
+						}
+						_ => panic!()
+					};
+				};
+
+				// trim leading zeroes
+				while str.get(0) == Some(&'0') {
+					str.remove(0);
+				};
+			}
+			
+			// parse through input string
+			let mut str: Vec<char> = arg.chars().collect();
+			let mut ops = Vec::new();
+			while !str.is_empty() {
+				if string_is_even(&str) {
+					div_string(&mut str);
+					ops.push(Operation::Divide);
+				} else {
+					sub_string(&mut str);
+					ops.push(Operation::Subtract);
+				};
+			};
+			
+			// apply operation sequence to bits
+			while let Some(op) = ops.pop() {
+				match op {
+					Operation::Divide => {
+						bits.push(false);
+					}
+					Operation::Subtract => {
+						let _ = bits.pop();
+						bits.push(true);
+					}
+				};
+			}
+
 			//flip bits if negative
 			if negative_arg && signed_mode {
 				negate(&mut bits);
 			}
 		}
-		ReadMode::Interpret => assert!(false)
+		ReadMode::Interpret => panic!()
 	};
 	
 	return Ok(bits);
@@ -333,6 +502,7 @@ fn read(arg: &String, mut read_mode: ReadMode, signed_mode: bool) -> Result<BitV
  */
 #[inline]
 fn write(bits: &BitVec, write_mode: WriteMode, write_length: WriteLength, signed_mode: bool) -> String {
+	println!("{}", bits);
 	String::new()
 }
 
