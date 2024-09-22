@@ -24,7 +24,14 @@ enum WriteMode {
 #[derive(Clone, Copy)]
 enum WriteLength {
 	Unfixed,
+	RoundUp,
 	Fixed(u64)
+}
+
+enum WriteSeparator {
+	Separator(String),
+	RuntimeDetermine(Option<String>),
+	None
 }
 
 /**
@@ -53,6 +60,14 @@ fn print_help() {
     println!("-w=<Num> Sets the width of output");
 	println!("	With decimal and octal the length is in characters (excluding - sign)");
 	println!("	With binary and hexadecimal the length is in bytes");
+	println!("-f Sets the width of ouput to the minimum number of characters to represent the number");
+	println!("-r Rounds the width of output to a pretty length");
+	println!("	Octal and binary will be rounded to bytes, octal will be rounded to even lengths");
+	println!("	This option does not effect the print length of decimal numbers");
+	println!("-c[=<sep>] Adds a separator character between groups of digits");
+	println!("	Separator is added every 3 chars for decimal, 2 for hex, 8 for binary, and 2 for octal");
+	println!("	Default separator is ',' for decimal and ' ' for everything else");
+	println!("-t Removes the separator character");
 }
 
 /*
@@ -74,7 +89,7 @@ fn negate(bits: &mut BitVec) {
    On failure, returns an Err with an error message
  */
 #[inline]
-fn read(arg: &String, mut read_mode: ReadMode, signed_mode: bool) -> Result<BitVec, String> {
+fn read(arg: &String, mut read_mode: ReadMode, write_mode: WriteMode, write_length: WriteLength, signed_mode: bool) -> Result<BitVec, String> {
 	let mut negative_arg = false;
 	// strip all prefixes from the arg and interpret
 	let stripped_arg = {
@@ -484,14 +499,35 @@ fn read(arg: &String, mut read_mode: ReadMode, signed_mode: bool) -> Result<BitV
 					}
 				};
 			}
-
-			//flip bits if negative
-			if negative_arg && signed_mode {
-				negate(&mut bits);
-			}
 		}
 		ReadMode::Interpret => panic!()
 	};
+
+	// increase length of bits to write_length
+	let target_len = match write_length {
+		WriteLength::Unfixed => bits.len() as u64,
+		WriteLength::RoundUp => {
+			let min_len = bits.len() as u64;
+			let int = match write_mode {
+				WriteMode::Binary | WriteMode::Hex => 8u64,
+				WriteMode::Octal => 6u64,
+				WriteMode::Decimal => 1u64
+			};
+			min_len.next_multiple_of(int)
+		}
+		WriteLength::Fixed(len) => len
+	};
+	if (bits.len() as u64) > target_len {
+		return Err("Number unrepresentable in fixed width".to_string());
+	}
+	while (bits.len() as u64) < target_len {
+		bits.insert(0, false);
+	}
+
+	// flip bits and add one if reading from decimal and negative
+	if negative_arg && read_mode == ReadMode::Decimal {
+		negate(&mut bits);
+	}
 	
 	return Ok(bits);
 }
@@ -501,7 +537,7 @@ fn read(arg: &String, mut read_mode: ReadMode, signed_mode: bool) -> Result<BitV
    a string version of the integer in the format given by write_mode
  */
 #[inline]
-fn write(bits: &BitVec, write_mode: WriteMode, write_length: WriteLength, signed_mode: bool) -> String {
+fn write(bits: &BitVec, write_mode: WriteMode, write_separator: &WriteSeparator, signed_mode: bool) -> String {
 	println!("{}", bits);
 	todo!()
 }
@@ -509,11 +545,19 @@ fn write(bits: &BitVec, write_mode: WriteMode, write_length: WriteLength, signed
 /**
    Converts the given argument into the specified format and returns either the converted string or an error message
  */
-#[inline]
-fn convert(ref arg: &String, read_mode: ReadMode, write_mode: WriteMode, write_length: WriteLength, signed_mode: bool) -> Result<String, String> {
-	match read(arg, read_mode, signed_mode) {
+fn convert(ref arg: &String, read_mode: ReadMode, write_mode: WriteMode, write_length: WriteLength, write_separator: &mut WriteSeparator, signed_mode: bool) -> Result<String, String> {
+	// runtime fix write_separator
+	if let WriteSeparator::RuntimeDetermine(_) = write_separator {
+		*write_separator = WriteSeparator::Separator(match write_mode {
+			WriteMode::Decimal => ',',
+			WriteMode::Binary | WriteMode::Octal | WriteMode::Hex => ' '
+		}.to_string());
+	}
+	
+	// do conversion
+	match read(arg, read_mode, write_mode, write_length, signed_mode) {
 		Ok(bits) => {
-			Ok(write(&bits, write_mode, write_length, signed_mode))
+			Ok(write(&bits, write_mode, &write_separator, signed_mode))
 		}
 		Err(msg) => {
 			Err(msg)
@@ -535,6 +579,7 @@ fn main() {
 	let mut read_mode = ReadMode::Interpret;
 	let mut write_mode = WriteMode::Hex;
 	let mut write_length = WriteLength::Unfixed;
+	let mut write_separator = WriteSeparator::None;
 	let mut signed_mode = false;
 
 	// save space for the results of conversions to be stored in
@@ -586,9 +631,30 @@ fn main() {
 				if let Ok(intnum) = num.parse::<u64>() {
 					write_length = WriteLength::Fixed(intnum);
 				} else {
-					println!("Error! unrecognizable option: {}", arg);
+					println!("Error! Unrecognizable option: {}", arg);
 					exit(1);
 				}
+			}
+			['-', 'f'] => {
+				write_length = WriteLength::Unfixed;
+			}
+			['-', 'r'] => {
+				write_length = WriteLength::RoundUp;
+			}
+			['-', 'c', '=', ..] => {
+				// separator
+				let (_, sep) = arg.split_at(3);
+				if sep.is_empty() {
+					println!("Error! Empty separator!");
+					exit(1);
+				}
+				write_separator = WriteSeparator::Separator(sep.to_string());
+			}
+			['-', 'c'] => {
+				write_separator = WriteSeparator::RuntimeDetermine(None);
+			}
+			['-', 't'] => {
+				write_separator = WriteSeparator::None;
 			}
 			['-', 'v'] | ['-', 'V'] => {
 				println!("Hex v{}", env!("CARGO_PKG_VERSION"));
@@ -596,7 +662,7 @@ fn main() {
 			}
 			_ => {
 				// something else (assume number)
-				match convert(&arg, read_mode, write_mode, write_length, signed_mode) {
+				match convert(&arg, read_mode, write_mode, write_length, &mut write_separator, signed_mode) {
 					Ok(str) => {
 						let _ = results.add(str);
 					}
@@ -628,7 +694,7 @@ fn main() {
 			Ok(_) => {
 				// presumed number
 				let _ = line.split_off(line.len() - 2);
-				match convert(&line, read_mode, write_mode, write_length, signed_mode) {
+				match convert(&line, read_mode, write_mode, write_length, &mut write_separator, signed_mode) {
 					Ok(str) => {
 						println!("{}", str);
 					}
