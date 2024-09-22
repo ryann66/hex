@@ -1,4 +1,4 @@
-use std::{io, process::exit, vec::Vec};
+use std::{io, ops::BitXorAssign, process::exit, vec::Vec};
 
 use queues::{CircularBuffer, IsQueue};
 use bitvec::prelude::BitVec;
@@ -77,10 +77,21 @@ fn print_help() {
  */
 
 /*
-   Negates the integer represented by the bitvec
+   Multiplies the value the integer represented by the bitvec by -1 using two's complement
 */
-fn negate(bits: &mut BitVec) {
-	todo!()
+fn negative(bits: &mut BitVec) {
+	// negate
+	for mut bit in bits.iter_mut() {
+		bit.bitxor_assign(true);
+	}
+
+	// add one
+	for mut bit in bits.iter_mut().rev() {
+		bit.bitxor_assign(true);
+		if *bit {
+			break;
+		}
+	}
 }
 
 /**
@@ -526,7 +537,7 @@ fn read(arg: &String, mut read_mode: ReadMode, write_mode: WriteMode, write_leng
 
 	// flip bits and add one if reading from decimal and negative
 	if negative_arg && read_mode == ReadMode::Decimal {
-		negate(&mut bits);
+		negative(&mut bits);
 	}
 	
 	return Ok(bits);
