@@ -65,7 +65,7 @@ fn print_help() {
    Negates the integer represented by the bitvec
 */
 fn negate(bits: &mut BitVec) {
-
+	todo!()
 }
 
 /**
@@ -503,7 +503,7 @@ fn read(arg: &String, mut read_mode: ReadMode, signed_mode: bool) -> Result<BitV
 #[inline]
 fn write(bits: &BitVec, write_mode: WriteMode, write_length: WriteLength, signed_mode: bool) -> String {
 	println!("{}", bits);
-	String::new()
+	todo!()
 }
 
 /**
