@@ -490,7 +490,7 @@ fn read(arg: &String, mut read_mode: ReadMode, write_mode: WriteMode, write_leng
 			}
 			
 			// parse through input string
-			let mut str: Vec<char> = arg.chars().collect();
+			let mut str: Vec<char> = stripped_arg.chars().collect();
 			let mut ops = Vec::new();
 			while !str.is_empty() {
 				if string_is_even(&str) {
