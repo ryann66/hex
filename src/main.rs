@@ -662,7 +662,7 @@ fn main() {
 				write_separator = WriteSeparator::Separator(sep.to_string());
 			}
 			['-', 'c'] => {
-				write_separator = WriteSeparator::RuntimeDetermine(None);
+				write_separator = WriteSeparator::RuntimeDetermine;
 			}
 			['-', 't'] => {
 				write_separator = WriteSeparator::None;
