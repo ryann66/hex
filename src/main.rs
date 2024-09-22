@@ -17,7 +17,7 @@ enum ReadMode {
 enum WriteMode {
 	Binary,
 	Decimal,
-	Hex,
+	Hex(bool /* is uppercase */),
 	Octal
 }
 
@@ -55,6 +55,7 @@ fn print_help() {
     println!("-d Writes output in base 10 (decimal)");
     println!("-o Writes output in octal with prefix");
     println!("-x Writes output in hexadecimal with prefix");
+	println!("	Default is to print uppercase hex use -xl to force lowercase");
     println!("-s Puts the system into signed mode (two's complement).  Use '_' for '-' in decimals");
     println!("-u Puts the system into unsigned mode (default)");
     println!("-w=<Num> Sets the width of output");
@@ -520,7 +521,7 @@ fn read(arg: &String, mut read_mode: ReadMode, write_mode: WriteMode, write_leng
 		WriteLength::RoundUp => {
 			let min_len = bits.len() as u64;
 			let int = match write_mode {
-				WriteMode::Binary | WriteMode::Hex => 8u64,
+				WriteMode::Binary | WriteMode::Hex(_) => 8u64,
 				WriteMode::Octal => 6u64,
 				WriteMode::Decimal => 1u64
 			};
@@ -561,7 +562,7 @@ fn convert(ref arg: &String, read_mode: ReadMode, write_mode: WriteMode, write_l
 	if let WriteSeparator::RuntimeDetermine = write_separator {
 		*write_separator = WriteSeparator::Separator(match write_mode {
 			WriteMode::Decimal => ',',
-			WriteMode::Binary | WriteMode::Octal | WriteMode::Hex => ' '
+			WriteMode::Binary | WriteMode::Octal | WriteMode::Hex(_) => ' '
 		}.to_string());
 	}
 	
@@ -588,7 +589,7 @@ fn main() {
 
 	// set standard settings
 	let mut read_mode = ReadMode::Interpret;
-	let mut write_mode = WriteMode::Hex;
+	let mut write_mode = WriteMode::Hex(true);
 	let mut write_length = WriteLength::Unfixed;
 	let mut write_separator = WriteSeparator::None;
 	let mut signed_mode = false;
@@ -608,8 +609,11 @@ fn main() {
 			['-', 'o'] => {
 				write_mode = WriteMode::Octal;
 			}
-			['-', 'x'] => {
-				write_mode = WriteMode::Hex;
+			['-', 'x'] | ['-', 'x', 'u'] => {
+				write_mode = WriteMode::Hex(true);
+			}
+			['-', 'x', 'l'] => {
+				write_mode = WriteMode::Hex(false);
 			}
 			['-', 'D'] => {
 				read_mode = ReadMode::Decimal;
