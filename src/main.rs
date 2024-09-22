@@ -30,7 +30,7 @@ enum WriteLength {
 
 enum WriteSeparator {
 	Separator(String),
-	RuntimeDetermine(Option<String>),
+	RuntimeDetermine,
 	None
 }
 
@@ -558,7 +558,7 @@ fn write(bits: &BitVec, write_mode: WriteMode, write_separator: &WriteSeparator,
  */
 fn convert(ref arg: &String, read_mode: ReadMode, write_mode: WriteMode, write_length: WriteLength, write_separator: &mut WriteSeparator, signed_mode: bool) -> Result<String, String> {
 	// runtime fix write_separator
-	if let WriteSeparator::RuntimeDetermine(_) = write_separator {
+	if let WriteSeparator::RuntimeDetermine = write_separator {
 		*write_separator = WriteSeparator::Separator(match write_mode {
 			WriteMode::Decimal => ',',
 			WriteMode::Binary | WriteMode::Octal | WriteMode::Hex => ' '
