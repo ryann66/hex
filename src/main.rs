@@ -193,9 +193,9 @@ fn read(arg: &String, mut read_mode: ReadMode, write_mode: WriteMode, write_leng
 						bits.push(false);
 					}
 					'1' => {
+						bits.push(false);
+						bits.push(false);
 						bits.push(true);
-						bits.push(false);
-						bits.push(false);
 					}
 					'2' => {
 						bits.push(false);
@@ -203,14 +203,14 @@ fn read(arg: &String, mut read_mode: ReadMode, write_mode: WriteMode, write_leng
 						bits.push(false);
 					}
 					'3' => {
-						bits.push(true);
-						bits.push(true);
 						bits.push(false);
+						bits.push(true);
+						bits.push(true);
 					}
 					'4' => {
-						bits.push(false);
-						bits.push(false);
 						bits.push(true);
+						bits.push(false);
+						bits.push(false);
 					}
 					'5' => {
 						bits.push(true);
@@ -218,9 +218,9 @@ fn read(arg: &String, mut read_mode: ReadMode, write_mode: WriteMode, write_leng
 						bits.push(true);
 					}
 					'6' => {
+						bits.push(true);
+						bits.push(true);
 						bits.push(false);
-						bits.push(true);
-						bits.push(true);
 					}
 					'7' => {
 						bits.push(true);
@@ -241,27 +241,27 @@ fn read(arg: &String, mut read_mode: ReadMode, write_mode: WriteMode, write_leng
 						bits.push(false);
 					}
 					'1' => {
+						bits.push(false);
+						bits.push(false);
+						bits.push(false);
 						bits.push(true);
-						bits.push(false);
-						bits.push(false);
-						bits.push(false);
 					}
 					'2' => {
 						bits.push(false);
-						bits.push(true);
 						bits.push(false);
+						bits.push(true);
 						bits.push(false);
 					}
 					'3' => {
-						bits.push(true);
-						bits.push(true);
 						bits.push(false);
 						bits.push(false);
+						bits.push(true);
+						bits.push(true);
 					}
 					'4' => {
 						bits.push(false);
-						bits.push(false);
 						bits.push(true);
+						bits.push(false);
 						bits.push(false);
 					}
 					'5' => {
@@ -277,10 +277,10 @@ fn read(arg: &String, mut read_mode: ReadMode, write_mode: WriteMode, write_leng
 						bits.push(false);
 					}
 					'7' => {
-						bits.push(true);
-						bits.push(true);
-						bits.push(true);
 						bits.push(false);
+						bits.push(true);
+						bits.push(true);
+						bits.push(true);
 					}
 					'8' => {
 						bits.push(false);
@@ -295,34 +295,34 @@ fn read(arg: &String, mut read_mode: ReadMode, write_mode: WriteMode, write_leng
 						bits.push(true);
 					}
 					'A' | 'a' => {
-						bits.push(false);
 						bits.push(true);
 						bits.push(false);
 						bits.push(true);
+						bits.push(false);
 					}
 					'B' | 'b' => {
 						bits.push(true);
-						bits.push(true);
 						bits.push(false);
+						bits.push(true);
 						bits.push(true);
 					}
 					'C' | 'c' => {
-						bits.push(false);
-						bits.push(false);
 						bits.push(true);
 						bits.push(true);
+						bits.push(false);
+						bits.push(false);
 					}
 					'D' | 'd' => {
 						bits.push(true);
-						bits.push(false);
 						bits.push(true);
+						bits.push(false);
 						bits.push(true);
 					}
 					'E' | 'e' => {
+						bits.push(true);
+						bits.push(true);
+						bits.push(true);
 						bits.push(false);
-						bits.push(true);
-						bits.push(true);
-						bits.push(true);
 					}
 					'F' | 'f' => {
 						bits.push(true);
