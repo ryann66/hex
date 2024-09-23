@@ -590,16 +590,148 @@ fn write(mut bits: &mut BitVec, write_mode: WriteMode, write_separator: &WriteSe
 			negative(&mut bits);
 		}
 
-		// actually convert
-		todo!()
+		/*
+		   adds one to the integer represented by the string
+		*/
+		fn add_string(str: &mut Vec<char>) {
+			// add to numbers
+			for index in (0..str.len()).rev() {
+				let ch = match str[index] {
+					'9' => '0',
+					'8' => '9',
+					'7' => '8',
+					'6' => '7',
+					'5' => '6',
+					'4' => '5',
+					'3' => '4',
+					'2' => '3',
+					'1' => '2',
+					'0' => '1',
+					_ => panic!()
+				};
+				str[index] = ch;
+				if ch != '0' { return; };
+			};
+			// leftover carry, add to front of str
+			str.insert(0, '1');
+		}
+
+		/*
+		   multiplies the integer represented by the string by 2
+		*/
+		fn mult_string(str: &mut Vec<char>) {
+			// multiply numbers starting in the back
+			let mut carry = false;
+			for index in (0..str.len()).rev() {
+				str[index] = match str[index] {
+					'9' => {
+						if carry {
+							'9'
+						} else {
+							carry = true;
+							'8'
+						}
+					}
+					'8' => {
+						if carry {
+							'7'
+						} else {
+							carry = true;
+							'6'
+						}
+					}
+					'7' => {
+						if carry {
+							'5'
+						} else {
+							carry = true;
+							'4'
+						}
+					}
+					'6' => {
+						if carry {
+							'3'
+						} else {
+							carry = true;
+							'2'
+						}
+					}
+					'5' => {
+						if carry {
+							'1'
+						} else {
+							carry = true;
+							'0'
+						}
+					}
+					'4' => {
+						if carry {
+							carry = false;
+							'9'
+						} else {
+							'8'
+						}
+					}
+					'3' => {
+						if carry {
+							carry = false;
+							'7'
+						} else {
+							'6'
+						}
+					}
+					'2' => {
+						if carry {
+							carry = false;
+							'5'
+						} else {
+							'4'
+						}
+					}
+					'1' => {
+						if carry {
+							carry = false;
+							'3'
+						} else {
+							'2'
+						}
+					}
+					'0' => {
+						if carry {
+							carry = false;
+							'1'
+						} else {
+							'0'
+						}
+					}
+					_ => panic!()
+				};
+			};
+			
+			// leftover carry, add to front of str
+			if carry {
+				str.insert(0, '1');
+			}
+		}
+
+		// convert to vector of chars for greater mutability
+		let mut num_str = Vec::new();
+		for bit in bits {
+			mult_string(&mut num_str);
+			if *bit { add_string(&mut num_str); };
+		}
+
+		// push char vector into final string
+		for c in num_str {
+			ret_str.push(c);
+		};
+
+		return ret_str;
 	}
 
 	let mut index_to_char = ['0', '1', '2', '3', '4', '5', '6', '7', '8', '9', 'A', 'B', 'C', 'D', 'E', 'F'];
 	let num_bits = match write_mode {
-		WriteMode::Binary => {
-			ret_str.push_str("0b");
-			1
-		}
+		WriteMode::Binary => 1,
 		WriteMode::Octal => 3,
 		WriteMode::Hex(is_upper) => {
 			// fix index_to_char if lowercase
