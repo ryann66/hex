@@ -35,9 +35,7 @@ enum WriteSeparator {
 	None
 }
 
-/**
-   Prints the program help
- */
+/// Prints the program help
 fn print_help() {
 	println!("HEX");
     println!("Tool for converting between different number types");
@@ -80,9 +78,7 @@ fn print_help() {
    bitvec[0] is the 1s position and bitvec[2] would be the 4s position
  */
 
-/*
-   Multiplies the value the integer represented by the bitvec by -1 using two's complement
-*/
+/// Multiplies the value the integer represented by the bitvec by -1 using two's complement
 fn negative(bits: &mut BitVec) {
 	// negate
 	for mut bit in bits.iter_mut() {
@@ -98,12 +94,9 @@ fn negative(bits: &mut BitVec) {
 	}
 }
 
-/**
-   Attempts to parse the string arg into an integer
-   The result integer is returned as a little-endian integer (signedness indicated by signed_mode)
-   On failure, returns an Err with an error message
- */
-#[inline]
+/// Attempts to parse the string arg into an integer
+/// The result integer is returned as a little-endian integer (signedness indicated by signed_mode)
+/// On failure, returns an Err with an error message
 fn read(arg: &String, mut read_mode: ReadMode, write_mode: WriteMode, write_length: WriteLength, signed_mode: bool) -> Result<BitVec, String> {
 	let mut negative_arg = false;
 	// strip all prefixes from the arg and interpret
@@ -351,9 +344,7 @@ fn read(arg: &String, mut read_mode: ReadMode, write_mode: WriteMode, write_leng
 				Subtract
 			}
 
-			/*
-			   returns if the integer that the string would parse into is even
-			 */
+			/// returns if the integer that the string would parse into is even
 			fn string_is_even(str: &Vec<char>) -> bool {
 				match str.last() {
 					Some('0') | Some('2') | Some('4') | Some('6') | Some('8') => true,
@@ -361,9 +352,7 @@ fn read(arg: &String, mut read_mode: ReadMode, write_mode: WriteMode, write_leng
 				}
 			}
 
-			/*
-			   subtracts one from the integer represented by the string
-			 */
+			/// subtracts one from the integer represented by the string
 			fn sub_string(str: &mut Vec<char>) {
 				// subtract off numbers
 				for index in (0..str.len()).rev() {
@@ -391,9 +380,7 @@ fn read(arg: &String, mut read_mode: ReadMode, write_mode: WriteMode, write_leng
 
 			}
 
-			/*
-			   divides the integer represented by the string by 2
-			 */
+			/// divides the integer represented by the string by 2
 			fn div_string(str: &mut Vec<char>) {
 				// divide numbers starting in the front
 				let mut carry = false;
@@ -560,11 +547,8 @@ fn read(arg: &String, mut read_mode: ReadMode, write_mode: WriteMode, write_leng
 	return Ok(bits);
 }
 
-/**
-   Converts the stream of bits representing a little-endian integer (signedness indicated by signed_mode) into
-   a string version of the integer in the format given by write_mode
- */
-#[inline]
+/// Converts the stream of bits representing a little-endian integer (signedness indicated by signed_mode) into
+/// a string version of the integer in the format given by write_mode
 fn write(mut bits: &mut BitVec, write_mode: WriteMode, write_separator: &WriteSeparator, signed_mode: bool, write_prefix: bool) -> String {
 	let mut ret_str = if write_prefix {
 		match write_mode {
@@ -590,9 +574,7 @@ fn write(mut bits: &mut BitVec, write_mode: WriteMode, write_separator: &WriteSe
 			negative(&mut bits);
 		}
 
-		/*
-		   adds one to the integer represented by the string
-		*/
+		/// adds one to the integer represented by the string
 		fn add_string(str: &mut Vec<char>) {
 			// add to numbers
 			for index in (0..str.len()).rev() {
@@ -616,9 +598,7 @@ fn write(mut bits: &mut BitVec, write_mode: WriteMode, write_separator: &WriteSe
 			str.insert(0, '1');
 		}
 
-		/*
-		   multiplies the integer represented by the string by 2
-		*/
+		/// multiplies the integer represented by the string by 2
 		fn mult_string(str: &mut Vec<char>) {
 			// multiply numbers starting in the back
 			let mut carry = false;
@@ -780,9 +760,7 @@ fn write(mut bits: &mut BitVec, write_mode: WriteMode, write_separator: &WriteSe
 	return ret_str;
 }
 
-/**
-   Converts the given argument into the specified format and returns either the converted string or an error message
- */
+/// Converts the given argument into the specified format and returns either the converted string or an error message
 fn convert(ref arg: &String, read_mode: ReadMode, write_mode: WriteMode, write_length: WriteLength, write_separator: &mut WriteSeparator, signed_mode: bool, write_prefix: bool) -> Result<String, String> {
 	// runtime fix write_separator
 	if let WriteSeparator::RuntimeDetermine = write_separator {
@@ -803,9 +781,7 @@ fn convert(ref arg: &String, read_mode: ReadMode, write_mode: WriteMode, write_l
 	}
 }
 
-/**
-   Converts numbers into different representations
- */
+/// Converts numbers into different representations
 fn main() {
 	// get args in a queue, use queue capacity to trim first arg
 	let mut args = CircularBuffer::new(std::env::args().len() - 1);
