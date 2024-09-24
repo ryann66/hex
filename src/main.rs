@@ -935,6 +935,7 @@ fn main() {
 			}
 			Ok(_) => {
 				// presumed number
+				line = line.trim().to_string();
 				match convert(&line, read_mode, write_mode, write_length, &mut write_separator, signed_mode, write_prefix) {
 					Ok(str) => {
 						println!("{}", str);
