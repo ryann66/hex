@@ -56,6 +56,7 @@ fn print_help() {
     println!("-x Writes output in hexadecimal with prefix");
 	println!("	Default is to print uppercase hex; use -xl to force lowercase");
     println!("-s Puts the system into signed mode (two's complement).  Use '-' in decimals");
+	println!("	It is recommended to combine this with '-w'");
     println!("-u Puts the system into unsigned mode (default)");
     println!("-w=<Num> Sets the length of output in bytes");
 	println!("	When writing in octal uses a 6-bit byte. Has no effect when writing in decimal");
