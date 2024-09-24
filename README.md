@@ -1,31 +1,32 @@
-# hex
-Command line converter for Linux
+# Hex
+Tool for converting between different number types
+Usage: hex <options> <params>
+Can take many params at once or be left empty to read from stdin
 
-Usage:
-hex \<options\> \<params\>  
-Params are the numbers to be converted.  Use prefixes or options to interpret non-decimal numbers.  
-If no params are passed then program will read from stdin (send an empty line or type q to stop reading)  
-Program returns the number of numbers converted upon completion  
-
-  
-**Options**  
--? Displays help  
--c Forces the program to read input as a a binary  
--n Forces the program to read input as a base 10 (decimal) integer  
--e Forces the program to read input as an octal  
--q Forces the program to read input as a hexadecimal  
--f Lets the program decide how to read input based off prefix (default)  
--b Writes output in binary with prefix  
--B Writes output in binary, broken into blocks of 8  
--d Writes output in base 10 (decimal)  
--o Writes output in octal with prefix  
--h Writes output in hexadecimal with prefix  
--t Puts the system into signed mode (two's complement).  
-       Be aware that lead bit will determine sign:
-	  0x8 will evaluate as negative
-	  0x18 will evaluate as positive
-       Use '_' for '-' when writing decimals to avoid confusion with flags when entering decimal  
--w**N** Sets the width of output to be **N** bytes long.  **N** must be 1-8 (inclusive).  
-       Not intended for use with octal or decimal  
--z Suppresses warning messages  
--v Prints the program version and exits  
+## Options:
+-h Displays this help and exits
+-v Displays the program version and exits
+-B Forces the program to read input as a a binary
+-D Forces the program to read input as a base 10 (decimal) integer
+-O Forces the program to read input as an octal
+-X Forces the program to read input as a hexadecimal
+-F Lets the program decide how to read input based off prefix (default)
+-b Writes output in binary with prefix
+-d Writes output in base 10 (decimal)
+-o Writes output in octal with prefix
+-x Writes output in hexadecimal with prefix
+        Default is to print uppercase hex; use -xl to force lowercase
+-s Puts the system into signed mode (two's complement).  Use '-' in decimals
+-u Puts the system into unsigned mode (default)
+-w=<Num> Sets the length of output in bytes
+        When writing in octal uses a 6-bit byte. Has no effect when writing in decimal
+-f Sets the width of ouput to the minimum number of characters to represent the number
+-r Rounds the width of output to a pretty length (usually a byte boundary)
+        Octal and binary will be rounded to bytes, octal will be rounded to even lengths
+        This option does not effect the print length of decimal numbers
+-c[=<sep>] Adds a separator character between groups of digits
+        Separator is added every 3 chars for decimal, 2 for hex, 8 for binary, and 2 for octal
+        Default separator is ',' for decimal and ' ' for everything else
+-t Removes the separator character
+-p Write prefixes on all non-decimal numbers (default)
+-n Omit prefixes from all numbers

@@ -40,7 +40,7 @@ fn print_help() {
 	println!("HEX");
     println!("Tool for converting between different number types");
     println!("Usage: hex <options> <params>");
-    println!("Can take many params at once or leave empty to read from stdin");
+    println!("Can take many params at once or be left empty to read from stdin");
     println!("");
     println!("Options:");
     println!("-h Displays this help and exits");
