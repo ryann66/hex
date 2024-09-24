@@ -469,6 +469,13 @@ fn read(arg: &String, mut read_mode: ReadMode, write_mode: WriteMode, write_leng
 				};
 			}
 			
+			// verify all characters are valid
+			for c in stripped_arg.chars() {
+				if !c.is_digit(10) {
+					return Err(format!("Character {} not allowed in decimal numbers", c));
+				};
+			};
+			
 			// parse through input string
 			let mut str: Vec<char> = stripped_arg.chars().collect();
 			let mut ops = Vec::new();
@@ -928,7 +935,6 @@ fn main() {
 			}
 			Ok(_) => {
 				// presumed number
-				let _ = line.split_off(line.len() - 2);
 				match convert(&line, read_mode, write_mode, write_length, &mut write_separator, signed_mode, write_prefix) {
 					Ok(str) => {
 						println!("{}", str);
