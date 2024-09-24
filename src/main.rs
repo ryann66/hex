@@ -54,14 +54,13 @@ fn print_help() {
     println!("-d Writes output in base 10 (decimal)");
     println!("-o Writes output in octal with prefix");
     println!("-x Writes output in hexadecimal with prefix");
-	println!("	Default is to print uppercase hex use -xl to force lowercase");
-    println!("-s Puts the system into signed mode (two's complement).  Use '_' for '-' in decimals");
+	println!("	Default is to print uppercase hex; use -xl to force lowercase");
+    println!("-s Puts the system into signed mode (two's complement).  Use '-' in decimals");
     println!("-u Puts the system into unsigned mode (default)");
-    println!("-w=<Num> Sets the width of output");
-	println!("	With decimal and octal the length is in characters (excluding - sign)");
-	println!("	With binary and hexadecimal the length is in bytes");
+    println!("-w=<Num> Sets the length of output in bytes");
+	println!("	When writing in octal uses a 6-bit byte. Has no effect when writing in decimal");
 	println!("-f Sets the width of ouput to the minimum number of characters to represent the number");
-	println!("-r Rounds the width of output to a pretty length");
+	println!("-r Rounds the width of output to a pretty length (usually a byte boundary)");
 	println!("	Octal and binary will be rounded to bytes, octal will be rounded to even lengths");
 	println!("	This option does not effect the print length of decimal numbers");
 	println!("-c[=<sep>] Adds a separator character between groups of digits");
@@ -71,12 +70,6 @@ fn print_help() {
 	println!("-p Write prefixes on all non-decimal numbers (default)");
 	println!("-n Omit prefixes from all numbers");
 }
-
-/*
-   A note on integer representation using bitvec.  All integers are stored 'little-endian'
-   where the the least significant bit gets the lowest address.  Hence,
-   bitvec[0] is the 1s position and bitvec[2] would be the 4s position
- */
 
 /// Multiplies the value the integer represented by the bitvec by -1 using two's complement
 fn negative(bits: &mut BitVec) {
@@ -95,7 +88,7 @@ fn negative(bits: &mut BitVec) {
 }
 
 /// Attempts to parse the string arg into an integer
-/// The result integer is returned as a little-endian integer (signedness indicated by signed_mode)
+/// The result integer is returned as an integer stored in the bitvec (signedness indicated by signed_mode)
 /// On failure, returns an Err with an error message
 fn read(arg: &String, mut read_mode: ReadMode, write_mode: WriteMode, write_length: WriteLength, signed_mode: bool) -> Result<BitVec, String> {
 	let mut negative_arg = false;
@@ -258,10 +251,10 @@ fn read(arg: &String, mut read_mode: ReadMode, write_mode: WriteMode, write_leng
 						bits.push(false);
 					}
 					'5' => {
-						bits.push(true);
 						bits.push(false);
 						bits.push(true);
 						bits.push(false);
+						bits.push(true);
 					}
 					'6' => {
 						bits.push(false);
@@ -276,10 +269,10 @@ fn read(arg: &String, mut read_mode: ReadMode, write_mode: WriteMode, write_leng
 						bits.push(true);
 					}
 					'8' => {
-						bits.push(false);
-						bits.push(false);
-						bits.push(false);
 						bits.push(true);
+						bits.push(false);
+						bits.push(false);
+						bits.push(false);
 					}
 					'9' => {
 						bits.push(true);
@@ -530,7 +523,11 @@ fn read(arg: &String, mut read_mode: ReadMode, write_mode: WriteMode, write_leng
 			};
 			min_len.next_multiple_of(int)
 		}
-		WriteLength::Fixed(len) => len
+		WriteLength::Fixed(len) => match write_mode {
+			WriteMode::Decimal => bits.len() as u64,
+			WriteMode::Octal => len * 6,
+			WriteMode::Binary | WriteMode::Hex(_) => len * 8
+		}
 	};
 	if (bits.len() as u64) > target_len {
 		return Err("Number unrepresentable in fixed width".to_string());
@@ -563,16 +560,16 @@ fn write(mut bits: &mut BitVec, write_mode: WriteMode, write_separator: &WriteSe
 	if bits.is_empty() {
 		ret_str.push('0');
 		return ret_str;
-	}
+	};
 	
 	if let WriteMode::Decimal = write_mode {
 		// do decimal conversion and return
 
 		// handle negatives for decimal
-		if signed_mode && write_mode == WriteMode::Decimal && bits.last().is_some_and(|b| *b) {
+		if signed_mode && write_mode == WriteMode::Decimal && bits.first().is_some_and(|b| *b) {
 			ret_str.push('-');
 			negative(&mut bits);
-		}
+		};
 
 		/// adds one to the integer represented by the string
 		fn add_string(str: &mut Vec<char>) {
@@ -701,13 +698,25 @@ fn write(mut bits: &mut BitVec, write_mode: WriteMode, write_separator: &WriteSe
 			if *bit { add_string(&mut num_str); };
 		}
 
+		let mut chars_in_group = (3 - (num_str.len() % 3)) % 3;
+
 		// push char vector into final string
-		for c in num_str {
-			ret_str.push(c);
-		};
+		let mut iter = num_str.iter().peekable();
+		while let Some(c) = iter.next() {
+			ret_str.push(*c);
+
+			chars_in_group += 1;
+			if let WriteSeparator::Separator(sep) = write_separator {
+				if chars_in_group == 3 && iter.peek().is_some() {
+					ret_str.push_str(sep);
+					chars_in_group = 0;
+				};
+			};
+		}
+		
 
 		return ret_str;
-	}
+	};
 
 	let mut index_to_char = ['0', '1', '2', '3', '4', '5', '6', '7', '8', '9', 'A', 'B', 'C', 'D', 'E', 'F'];
 	let num_bits = match write_mode {
@@ -718,8 +727,8 @@ fn write(mut bits: &mut BitVec, write_mode: WriteMode, write_separator: &WriteSe
 			if !is_upper {
 				for i in 10..16 {
 					index_to_char[i] = index_to_char[i].to_lowercase().next().unwrap();
-				}
-			}
+				};
+			};
 			4
 		}
 		WriteMode::Decimal => panic!(),
@@ -732,9 +741,9 @@ fn write(mut bits: &mut BitVec, write_mode: WriteMode, write_separator: &WriteSe
 	};
 
 	// number of chars already added to the group for emplacing separators
-	let mut chars_in_group = bits.len() /  num_bits % ideal_chars_in_group;
+	let mut chars_in_group = (ideal_chars_in_group - (bits.len() / num_bits % ideal_chars_in_group)) % ideal_chars_in_group;
 
-	let mut iter = bits.iter();
+	let mut iter = bits.iter().peekable();
 	'outer: loop {
 		let mut index: usize = 0;
 		for _ in 0..num_bits {
@@ -744,17 +753,17 @@ fn write(mut bits: &mut BitVec, write_mode: WriteMode, write_separator: &WriteSe
 			} else {
 				// no more bits
 				break 'outer;
-			}
+			};
 		};
 		ret_str.push(index_to_char[index]);
 
 		chars_in_group += 1;
 		if let WriteSeparator::Separator(sep) = write_separator {
-			if chars_in_group == ideal_chars_in_group {
+			if chars_in_group == ideal_chars_in_group && iter.peek().is_some() {
 				ret_str.push_str(sep);
 				chars_in_group = 0;
-			}
-		}
+			};
+		};
 	};
 
 	return ret_str;
@@ -935,5 +944,215 @@ fn main() {
 				exit(1);
 			}
 		}
+	}
+}
+
+#[cfg(test)]
+mod tests {
+    use bitvec::prelude::*;
+
+    use crate::*;
+
+	fn bitvec_of_num(mut num: u64) -> BitVec {
+		let mut bv: BitVec = BitVec::new();
+		while num != 0 {
+			bv.push((num & 1) == 1);
+			num >>= 1;
+		};
+		bv.reverse();
+		bv
+	}
+
+	fn padded_bitvec_of_num(num: u64, pad: usize) -> BitVec {
+		let mut bv = bitvec_of_num(num);
+		while bv.len() % pad != 0 {
+			bv.insert(0, false);
+		}
+		bv
+	}
+
+	#[test]
+	fn bitvec_of_num_test() {
+		let mut bv: BitVec = BitVec::new();
+		bv.push(true);
+		bv.push(false);
+		bv.push(true);
+		bv.push(true);
+		assert_eq!(bv, bitvec_of_num(11));
+		bv.insert(0, false);
+		bv.insert(0, false);
+		bv.insert(0, false);
+		bv.insert(0, true);
+		assert_eq!(bv, bitvec_of_num(139))
+	}
+
+	#[test]
+	fn read_decimal_tests() {
+		assert_eq!(read(&"0".to_string(), ReadMode::Decimal, WriteMode::Decimal, WriteLength::Unfixed, false), Ok(bitvec_of_num(0)));
+		assert_eq!(read(&"1".to_string(), ReadMode::Decimal, WriteMode::Decimal, WriteLength::Unfixed, false), Ok(bitvec_of_num(1)));
+		assert_eq!(read(&"2".to_string(), ReadMode::Decimal, WriteMode::Decimal, WriteLength::Unfixed, false), Ok(bitvec_of_num(2)));
+		assert_eq!(read(&"34".to_string(), ReadMode::Decimal, WriteMode::Decimal, WriteLength::Unfixed, false), Ok(bitvec_of_num(34)));
+		assert_eq!(read(&"65".to_string(), ReadMode::Decimal, WriteMode::Decimal, WriteLength::Unfixed, false), Ok(bitvec_of_num(65)));
+		assert_eq!(read(&"789".to_string(), ReadMode::Decimal, WriteMode::Decimal, WriteLength::Unfixed, false), Ok(bitvec_of_num(789)));
+	}
+
+	#[test]
+	fn read_negative_decimal_tests() {
+		assert_eq!(read(&"-0".to_string(), ReadMode::Decimal, WriteMode::Binary, WriteLength::Unfixed, true), Ok(bitvec_of_num(0)));
+		assert_eq!(read(&"-1".to_string(), ReadMode::Decimal, WriteMode::Binary, WriteLength::Fixed(8), true), Ok(bitvec_of_num(-1i64 as u64)));
+		assert_eq!(read(&"-2".to_string(), ReadMode::Decimal, WriteMode::Binary, WriteLength::Fixed(8), true), Ok(bitvec_of_num(-2i64 as u64)));
+		assert_eq!(read(&"-34".to_string(), ReadMode::Decimal, WriteMode::Binary, WriteLength::Fixed(8), true), Ok(bitvec_of_num(-34i64 as u64)));
+		assert_eq!(read(&"-65".to_string(), ReadMode::Decimal, WriteMode::Binary, WriteLength::Fixed(8), true), Ok(bitvec_of_num(-65i64 as u64)));
+		assert_eq!(read(&"-789".to_string(), ReadMode::Decimal, WriteMode::Binary, WriteLength::Fixed(8), true), Ok(bitvec_of_num(-789i64 as u64)));
+	}
+
+	#[test]
+	fn read_octal_tests() {
+		assert_eq!(read(&"0".to_string(), ReadMode::Octal, WriteMode::Decimal, WriteLength::Unfixed, false), Ok(bitvec_of_num(0)));
+		assert_eq!(read(&"1".to_string(), ReadMode::Octal, WriteMode::Decimal, WriteLength::Unfixed, false), Ok(bitvec_of_num(1)));
+		assert_eq!(read(&"2".to_string(), ReadMode::Octal, WriteMode::Decimal, WriteLength::Unfixed, false), Ok(bitvec_of_num(2)));
+		assert_eq!(read(&"34".to_string(), ReadMode::Octal, WriteMode::Decimal, WriteLength::Unfixed, false), Ok(bitvec_of_num(28)));
+		assert_eq!(read(&"65".to_string(), ReadMode::Octal, WriteMode::Decimal, WriteLength::Unfixed, false), Ok(bitvec_of_num(53)));
+		assert_eq!(read(&"7770".to_string(), ReadMode::Octal, WriteMode::Decimal, WriteLength::Unfixed, false), Ok(bitvec_of_num(4088)));
+	}
+
+	#[test]
+	fn read_binary_tests() {
+		assert_eq!(read(&"0".to_string(), ReadMode::Binary, WriteMode::Decimal, WriteLength::Unfixed, false), Ok(bitvec_of_num(0)));
+		assert_eq!(read(&"1".to_string(), ReadMode::Binary, WriteMode::Decimal, WriteLength::Unfixed, false), Ok(bitvec_of_num(1)));
+		assert_eq!(read(&"1010".to_string(), ReadMode::Binary, WriteMode::Decimal, WriteLength::Unfixed, false), Ok(bitvec_of_num(10)));
+		assert_eq!(read(&"1111111111".to_string(), ReadMode::Binary, WriteMode::Decimal, WriteLength::Unfixed, false), Ok(bitvec_of_num(1023)));
+	}
+
+	#[test]
+	fn write_decimal_tests() {
+		assert_eq!(write(&mut bitvec_of_num(0), WriteMode::Decimal, &WriteSeparator::None, false, false), "0".to_string());
+		assert_eq!(write(&mut bitvec_of_num(1), WriteMode::Decimal, &WriteSeparator::None, false, false), "1".to_string());
+		assert_eq!(write(&mut bitvec_of_num(2), WriteMode::Decimal, &WriteSeparator::None, false, false), "2".to_string());
+		assert_eq!(write(&mut bitvec_of_num(34), WriteMode::Decimal, &WriteSeparator::None, false, false), "34".to_string());
+		assert_eq!(write(&mut bitvec_of_num(65), WriteMode::Decimal, &WriteSeparator::None, false, false), "65".to_string());
+		assert_eq!(write(&mut bitvec_of_num(789), WriteMode::Decimal, &WriteSeparator::None, false, false), "789".to_string());
+		
+		assert_eq!(write(&mut BitVec::new(), WriteMode::Decimal, &WriteSeparator::None, false, true), "0".to_string());
+		assert_eq!(write(&mut bitvec_of_num(2024), WriteMode::Decimal, &WriteSeparator::None, false, true), "2024".to_string());
+	}
+	
+	#[test]
+	fn write_negative_decimal_tests() {
+		assert_eq!(write(&mut bitvec_of_num(0), WriteMode::Decimal, &WriteSeparator::None, true, false), "0".to_string());
+		assert_eq!(write(&mut bitvec_of_num(-1i64 as u64), WriteMode::Decimal, &WriteSeparator::None, true, false), "-1".to_string());
+		assert_eq!(write(&mut bitvec_of_num(-2i64 as u64), WriteMode::Decimal, &WriteSeparator::None, true, false), "-2".to_string());
+		assert_eq!(write(&mut bitvec_of_num(-34i64 as u64), WriteMode::Decimal, &WriteSeparator::None, true, false), "-34".to_string());
+		assert_eq!(write(&mut bitvec_of_num(-65i64 as u64), WriteMode::Decimal, &WriteSeparator::None, true, false), "-65".to_string());
+		assert_eq!(write(&mut bitvec_of_num(-789i64 as u64), WriteMode::Decimal, &WriteSeparator::None, true, false), "-789".to_string());
+	}
+
+	#[test]
+	fn write_octal_tests() {
+		assert_eq!(write(&mut padded_bitvec_of_num(0, 3), WriteMode::Octal, &WriteSeparator::None, false, false), "0".to_string());
+		assert_eq!(write(&mut padded_bitvec_of_num(1, 3), WriteMode::Octal, &WriteSeparator::None, false, false), "1".to_string());
+		assert_eq!(write(&mut padded_bitvec_of_num(2, 3), WriteMode::Octal, &WriteSeparator::None, false, false), "2".to_string());
+		assert_eq!(write(&mut padded_bitvec_of_num(28, 3), WriteMode::Octal, &WriteSeparator::None, false, false), "34".to_string());
+		assert_eq!(write(&mut padded_bitvec_of_num(53, 3), WriteMode::Octal, &WriteSeparator::None, false, false), "65".to_string());
+		assert_eq!(write(&mut padded_bitvec_of_num(4088, 3), WriteMode::Octal, &WriteSeparator::None, false, false), "7770".to_string());
+		
+		assert_eq!(write(&mut BitVec::new(), WriteMode::Octal, &WriteSeparator::None, false, true), "0o0".to_string());
+		assert_eq!(write(&mut padded_bitvec_of_num(2024, 3), WriteMode::Octal, &WriteSeparator::None, false, true), "0o3750".to_string());
+	}
+
+	#[test]
+	fn write_hex_tests() {
+		assert_eq!(write(&mut padded_bitvec_of_num(0, 4), WriteMode::Hex(false), &WriteSeparator::None, false, false), "0".to_string());
+		assert_eq!(write(&mut padded_bitvec_of_num(1, 4), WriteMode::Hex(false), &WriteSeparator::None, false, false), "1".to_string());
+		assert_eq!(write(&mut padded_bitvec_of_num(2, 4), WriteMode::Hex(false), &WriteSeparator::None, false, false), "2".to_string());
+		assert_eq!(write(&mut padded_bitvec_of_num(52, 4), WriteMode::Hex(false), &WriteSeparator::None, false, false), "34".to_string());
+		
+		assert_eq!(write(&mut BitVec::new(), WriteMode::Hex(false), &WriteSeparator::None, false, true), "0x0".to_string());
+		assert_eq!(write(&mut padded_bitvec_of_num(2024, 4), WriteMode::Hex(false), &WriteSeparator::None, false, true), "0x7e8".to_string());
+	}
+
+	#[test]
+	fn write_binary_tests() {
+		assert_eq!(write(&mut bitvec_of_num(0), WriteMode::Binary, &WriteSeparator::None, false, false), "0".to_string());
+		assert_eq!(write(&mut bitvec_of_num(1), WriteMode::Binary, &WriteSeparator::None, false, false), "1".to_string());
+		assert_eq!(write(&mut bitvec_of_num(2), WriteMode::Binary, &WriteSeparator::None, false, false), "10".to_string());
+		assert_eq!(write(&mut bitvec_of_num(52), WriteMode::Binary, &WriteSeparator::None, false, false), "110100".to_string());
+		
+		assert_eq!(write(&mut BitVec::new(), WriteMode::Binary, &WriteSeparator::None, false, true), "0b0".to_string());
+		assert_eq!(write(&mut bitvec_of_num(2024), WriteMode::Binary, &WriteSeparator::None, false, true), "0b11111101000".to_string());
+	}
+
+	#[test]
+	fn hex_capitalization_tests() {
+		assert_eq!(convert(&"abcdef".to_string(), ReadMode::Hex, WriteMode::Hex(false), WriteLength::Unfixed, &mut WriteSeparator::None, false, false), Ok("abcdef".to_string()));
+		assert_eq!(convert(&"ABCDEF".to_string(), ReadMode::Hex, WriteMode::Hex(false), WriteLength::Unfixed, &mut WriteSeparator::None, false, false), Ok("abcdef".to_string()));
+		assert_eq!(convert(&"abcdef".to_string(), ReadMode::Hex, WriteMode::Hex(true), WriteLength::Unfixed, &mut WriteSeparator::None, false, false), Ok("ABCDEF".to_string()));
+		assert_eq!(convert(&"ABCDEF".to_string(), ReadMode::Hex, WriteMode::Hex(true), WriteLength::Unfixed, &mut WriteSeparator::None, false, false), Ok("ABCDEF".to_string()));
+	}
+
+	#[test]
+	fn interpret_type_tests() {
+		assert_eq!(convert(&"abcdef".to_string(), ReadMode::Interpret, WriteMode::Hex(false), WriteLength::Unfixed, &mut WriteSeparator::None, false, false), Ok("abcdef".to_string()));
+		assert_eq!(convert(&"0xabcdef".to_string(), ReadMode::Interpret, WriteMode::Hex(false), WriteLength::Unfixed, &mut WriteSeparator::None, false, false), Ok("abcdef".to_string()));
+		assert_eq!(convert(&"0b1010".to_string(), ReadMode::Interpret, WriteMode::Hex(false), WriteLength::Unfixed, &mut WriteSeparator::None, false, false), Ok("a".to_string()));
+		assert_eq!(convert(&"255".to_string(), ReadMode::Interpret, WriteMode::Hex(false), WriteLength::Unfixed, &mut WriteSeparator::None, false, false), Ok("ff".to_string()));
+		assert_eq!(convert(&"0o377".to_string(), ReadMode::Interpret, WriteMode::Hex(false), WriteLength::Unfixed, &mut WriteSeparator::None, false, false), Ok("ff".to_string()));
+	}
+
+	#[test]
+	fn fixed_width_tests() {
+		assert_eq!(convert(&"5".to_string(), ReadMode::Decimal, WriteMode::Decimal, WriteLength::Fixed(2), &mut WriteSeparator::None, false, false), Ok("5".to_string()));
+		assert_eq!(convert(&"5".to_string(), ReadMode::Decimal, WriteMode::Binary, WriteLength::Fixed(1), &mut WriteSeparator::None, false, false), Ok("00000101".to_string()));
+		assert_eq!(convert(&"5".to_string(), ReadMode::Decimal, WriteMode::Hex(false), WriteLength::Fixed(1), &mut WriteSeparator::None, false, false), Ok("05".to_string()));
+		assert_eq!(convert(&"5".to_string(), ReadMode::Decimal, WriteMode::Octal, WriteLength::Fixed(1), &mut WriteSeparator::None, false, false), Ok("05".to_string()));
+		assert_eq!(convert(&"15".to_string(), ReadMode::Decimal, WriteMode::Binary, WriteLength::Fixed(2), &mut WriteSeparator::None, false, false), Ok("0000000000001111".to_string()));
+		assert_eq!(convert(&"256".to_string(), ReadMode::Decimal, WriteMode::Hex(false), WriteLength::Fixed(3), &mut WriteSeparator::None, false, false), Ok("000100".to_string()));
+		assert_eq!(convert(&"64".to_string(), ReadMode::Decimal, WriteMode::Octal, WriteLength::Fixed(3), &mut WriteSeparator::None, false, false), Ok("000100".to_string()));
+		
+		match convert(&"fff".to_string(), ReadMode::Hex, WriteMode::Hex(false), WriteLength::Fixed(1), &mut WriteSeparator::None, false, false) {
+			Err(_) => { }
+			Ok(_) => panic!()
+		}
+	}
+
+	#[test]
+	fn rounded_width_tests() {
+		assert_eq!(convert(&"5".to_string(), ReadMode::Decimal, WriteMode::Decimal, WriteLength::RoundUp, &mut WriteSeparator::None, false, false), Ok("5".to_string()));
+		assert_eq!(convert(&"5".to_string(), ReadMode::Decimal, WriteMode::Binary, WriteLength::RoundUp, &mut WriteSeparator::None, false, false), Ok("00000101".to_string()));
+		assert_eq!(convert(&"5".to_string(), ReadMode::Decimal, WriteMode::Hex(false), WriteLength::RoundUp, &mut WriteSeparator::None, false, false), Ok("05".to_string()));
+		assert_eq!(convert(&"5".to_string(), ReadMode::Decimal, WriteMode::Octal, WriteLength::RoundUp, &mut WriteSeparator::None, false, false), Ok("05".to_string()));
+		assert_eq!(convert(&"256".to_string(), ReadMode::Decimal, WriteMode::Binary, WriteLength::RoundUp, &mut WriteSeparator::None, false, false), Ok("0000000100000000".to_string()));
+		assert_eq!(convert(&"256".to_string(), ReadMode::Decimal, WriteMode::Hex(false), WriteLength::RoundUp, &mut WriteSeparator::None, false, false), Ok("0100".to_string()));
+		assert_eq!(convert(&"64".to_string(), ReadMode::Decimal, WriteMode::Octal, WriteLength::RoundUp, &mut WriteSeparator::None, false, false), Ok("0100".to_string()));
+	}
+
+	#[test]
+	fn unfixed_width_tests() {
+		assert_eq!(convert(&"5".to_string(), ReadMode::Decimal, WriteMode::Decimal, WriteLength::Unfixed, &mut WriteSeparator::None, false, false), Ok("5".to_string()));
+		assert_eq!(convert(&"5".to_string(), ReadMode::Decimal, WriteMode::Binary, WriteLength::Unfixed, &mut WriteSeparator::None, false, false), Ok("101".to_string()));
+		assert_eq!(convert(&"5".to_string(), ReadMode::Decimal, WriteMode::Hex(false), WriteLength::Unfixed, &mut WriteSeparator::None, false, false), Ok("5".to_string()));
+		assert_eq!(convert(&"5".to_string(), ReadMode::Decimal, WriteMode::Octal, WriteLength::Unfixed, &mut WriteSeparator::None, false, false), Ok("5".to_string()));
+		assert_eq!(convert(&"256".to_string(), ReadMode::Decimal, WriteMode::Binary, WriteLength::Unfixed, &mut WriteSeparator::None, false, false), Ok("100000000".to_string()));
+		assert_eq!(convert(&"256".to_string(), ReadMode::Decimal, WriteMode::Hex(false), WriteLength::Unfixed, &mut WriteSeparator::None, false, false), Ok("100".to_string()));
+		assert_eq!(convert(&"64".to_string(), ReadMode::Decimal, WriteMode::Octal, WriteLength::Unfixed, &mut WriteSeparator::None, false, false), Ok("100".to_string()));
+	}
+
+	#[test]
+	fn separator_tests() {
+		assert_eq!(convert(&"5000".to_string(), ReadMode::Decimal, WriteMode::Decimal, WriteLength::Unfixed, &mut WriteSeparator::RuntimeDetermine, false, false), Ok("5,000".to_string()));
+		assert_eq!(convert(&"50000".to_string(), ReadMode::Decimal, WriteMode::Decimal, WriteLength::Unfixed, &mut WriteSeparator::RuntimeDetermine, false, false), Ok("50,000".to_string()));
+		assert_eq!(convert(&"500000".to_string(), ReadMode::Decimal, WriteMode::Decimal, WriteLength::Unfixed, &mut WriteSeparator::RuntimeDetermine, false, false), Ok("500,000".to_string()));
+		assert_eq!(convert(&"bcd".to_string(), ReadMode::Hex, WriteMode::Hex(false), WriteLength::Unfixed, &mut WriteSeparator::RuntimeDetermine, false, false), Ok("b cd".to_string()));
+		assert_eq!(convert(&"abcd".to_string(), ReadMode::Hex, WriteMode::Hex(false), WriteLength::Unfixed, &mut WriteSeparator::RuntimeDetermine, false, false), Ok("ab cd".to_string()));
+		assert_eq!(convert(&"12".to_string(), ReadMode::Octal, WriteMode::Octal, WriteLength::Unfixed, &mut WriteSeparator::RuntimeDetermine, false, false), Ok("12".to_string()));
+		assert_eq!(convert(&"123".to_string(), ReadMode::Octal, WriteMode::Octal, WriteLength::Unfixed, &mut WriteSeparator::RuntimeDetermine, false, false), Ok("1 23".to_string()));
+		assert_eq!(convert(&"1234".to_string(), ReadMode::Octal, WriteMode::Octal, WriteLength::Unfixed, &mut WriteSeparator::RuntimeDetermine, false, false), Ok("12 34".to_string()));
+		assert_eq!(convert(&"10101010".to_string(), ReadMode::Binary, WriteMode::Binary, WriteLength::Unfixed, &mut WriteSeparator::RuntimeDetermine, false, false), Ok("10101010".to_string()));
+		assert_eq!(convert(&"1010101010".to_string(), ReadMode::Binary, WriteMode::Binary, WriteLength::Unfixed, &mut WriteSeparator::RuntimeDetermine, false, false), Ok("10 10101010".to_string()));
+		assert_eq!(convert(&"10101010101010".to_string(), ReadMode::Binary, WriteMode::Binary, WriteLength::Unfixed, &mut WriteSeparator::RuntimeDetermine, false, false), Ok("101010 10101010".to_string()));
+		assert_eq!(convert(&"1010101010101010".to_string(), ReadMode::Binary, WriteMode::Binary, WriteLength::Unfixed, &mut WriteSeparator::RuntimeDetermine, false, false), Ok("10101010 10101010".to_string()));
+		assert_eq!(convert(&"101010101010101010".to_string(), ReadMode::Binary, WriteMode::Binary, WriteLength::Unfixed, &mut WriteSeparator::RuntimeDetermine, false, false), Ok("10 10101010 10101010".to_string()));
+	
+		assert_eq!(convert(&"abcd".to_string(), ReadMode::Hex, WriteMode::Hex(false), WriteLength::Unfixed, &mut WriteSeparator::Separator("hey".to_string()), false, false), Ok("abheycd".to_string()));
 	}
 }
